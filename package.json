@@ -52,7 +52,7 @@
   },
   "build": {
     "appId": "com.SWG-Returns-Launcher.launcher",
-    "productName": "SWG-The-Final-Arena Launcher",
+    "productName": "SWG-Returns Launcher",
     "directories": {
       "buildResources": "build",
       "output": "dist"
