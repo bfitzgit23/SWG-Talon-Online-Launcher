@@ -1,4 +1,4 @@
-// renderer.js - SWG Returns Launcher (all features, robust event binding)
+// renderer.js - SWG Returns Launcher (full options, dynamic)
 const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +13,7 @@ function getElement(id) {
 window.addEventListener('DOMContentLoaded', () => {
   console.log('[Renderer] DOM ready, initializing...');
 
-  // --- DOM elements (all must exist in HTML) ---
+  // --- DOM elements (all) ---
   const closeButton = getElement('close-button');
   const minimizeButton = getElement('minimize-button');
   const maximizeButton = getElement('maximize-button');
@@ -49,6 +49,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const launcherVersionSpan = getElement('launcher-version');
   const checkUpdatesNowButton = getElement('check-updates-now');
 
+  // Game settings elements
   const resolutionSelect = getElement('resolution-select');
   const displayModeSelect = getElement('display-mode-select');
   const fpsLimitSelect = getElement('fps-limit-select');
@@ -71,7 +72,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const safeModeCheckbox = getElement('safe-mode-checkbox');
   const shareUsageCheckbox = getElement('share-usage-checkbox');
 
-  // Legacy (hidden but kept for compatibility)
+  // Legacy hidden elements
   const scanModeSelect = getElement('scan-mode-select');
   const autoLaunchCheckbox = getElement('auto-launch-checkbox');
   const autoUpdateCheckbox = getElement('auto-update-checkbox');
@@ -132,7 +133,6 @@ window.addEventListener('DOMContentLoaded', () => {
     } catch (_) {}
   }
 
-  // Window controls
   if (closeButton) closeButton.addEventListener('click', () => ipcRenderer.invoke('window:close'));
   if (minimizeButton) minimizeButton.addEventListener('click', () => ipcRenderer.invoke('window:minimize'));
   if (maximizeButton) maximizeButton.addEventListener('click', async () => {
@@ -143,7 +143,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'F11') { e.preventDefault(); await ipcRenderer.invoke('window:toggleFullscreen'); }
   });
 
-  // Settings modal
   function openSettingsModal() {
     if (modalOverlay && settingsModal) {
       modalOverlay.style.display = 'block';
@@ -255,7 +254,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   if (saveSettingsButton) saveSettingsButton.addEventListener('click', saveSettings);
 
-  // Sliders live update
   if (memorySlider && memoryValue) {
     memorySlider.addEventListener('input', (e) => { memoryValue.textContent = `${e.target.value} MB`; });
   }
