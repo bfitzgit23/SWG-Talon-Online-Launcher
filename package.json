@@ -1,13 +1,13 @@
 {
-  "name": "SWG-TFA-launcher",
+  "name": "SWG-Returns-launcher",
   "version": "1.1.0",
-  "description": "SWG-TFA Launcher",
+  "description": "SWG-Returns Launcher",
   "main": "main.js",
-  "author": "SWG-TFA_Dev",
+  "author": "SWG-Returns_Dev",
   "license": "CC0-1.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bfitzgit23/SWG-TFA-Launcher"
+    "url": "https://github.com/bfitzgit23/SWG-Returns-Launcher"
   },
   "homepage": "https://swgreturns.github.io",
   "keywords": [
@@ -51,7 +51,7 @@
     "uuid": "^9.0.0"
   },
   "build": {
-    "appId": "com.SWG-TFA-Launcher.launcher",
+    "appId": "com.SWG-Returns-Launcher.launcher",
     "productName": "SWG-The-Final-Arena Launcher",
     "directories": {
       "buildResources": "build",
