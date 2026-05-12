@@ -52,7 +52,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Theme selector
   const themeSelect = getElement('theme-select');
 
-  // Game settings elements (all)
+  // Game settings
   const resolutionSelect = getElement('resolution-select');
   const displayModeSelect = getElement('display-mode-select');
   const fpsLimitSelect = getElement('fps-limit-select');
@@ -75,7 +75,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const safeModeCheckbox = getElement('safe-mode-checkbox');
   const shareUsageCheckbox = getElement('share-usage-checkbox');
 
-  // Legacy hidden elements
+  // Legacy hidden
   const scanModeSelect = getElement('scan-mode-select');
   const autoLaunchCheckbox = getElement('auto-launch-checkbox');
   const autoUpdateCheckbox = getElement('auto-update-checkbox');
@@ -92,10 +92,8 @@ window.addEventListener('DOMContentLoaded', () => {
   let lastDownloadBytes = 0;
   let completedFiles = 0;
 
-  // Apply theme to body
   function applyTheme(theme) {
     const body = document.body;
-    // Remove all existing theme classes
     body.classList.remove('theme-black-red', 'theme-purple', 'theme-blue', 'theme-yellow', 'theme-orange', 'theme-pink', 'theme-hotpink');
     if (theme && theme !== 'default') {
       body.classList.add(`theme-${theme}`);
@@ -146,7 +144,6 @@ window.addEventListener('DOMContentLoaded', () => {
     } catch (_) {}
   }
 
-  // Window controls
   if (closeButton) closeButton.addEventListener('click', () => ipcRenderer.invoke('window:close'));
   if (minimizeButton) minimizeButton.addEventListener('click', () => ipcRenderer.invoke('window:minimize'));
   if (maximizeButton) maximizeButton.addEventListener('click', async () => {
@@ -157,7 +154,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'F11') { e.preventDefault(); await ipcRenderer.invoke('window:toggleFullscreen'); }
   });
 
-  // Settings modal
   function openSettingsModal() {
     if (modalOverlay && settingsModal) {
       modalOverlay.style.display = 'block';
@@ -225,7 +221,6 @@ window.addEventListener('DOMContentLoaded', () => {
         zoomValue.textContent = `${savedZoom}%`;
         await ipcRenderer.invoke('set-zoom', savedZoom);
       }
-      // Theme
       if (themeSelect) {
         const savedTheme = settings.theme || 'default';
         themeSelect.value = savedTheme;
@@ -268,8 +263,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (installDir) {
         await ipcRenderer.invoke('write-game-options', installDir, settings);
       }
-      // Apply theme immediately
-      if (themeSelect) applyTheme(settings.theme);
+      applyTheme(settings.theme);
       updateStatus('Settings saved successfully');
       closeSettingsModal();
     } catch (error) {
@@ -278,7 +272,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   if (saveSettingsButton) saveSettingsButton.addEventListener('click', saveSettings);
 
-  // Sliders live update
   if (memorySlider && memoryValue) {
     memorySlider.addEventListener('input', (e) => { memoryValue.textContent = `${e.target.value} MB`; });
   }
@@ -293,7 +286,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Install directory selection
   async function showInstallLocationDialog() {
     try {
       const selectedDir = await ipcRenderer.invoke('select-directory');
@@ -328,7 +320,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Play button (unchanged)
   if (playButton) {
     playButton.addEventListener('click', async () => {
       if (!installDir) {
@@ -366,7 +357,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Patcher (full scan, repair, pause) – unchanged
   async function startScan(mode) {
     if (isScanning) return updateStatus('Scan already in progress');
     isScanning = true;
