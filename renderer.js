@@ -1,4 +1,4 @@
-// renderer.js - SWG Returns Launcher (full options, dynamic)
+// renderer.js - SWG Returns Launcher (full features + theme selector)
 const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +13,7 @@ function getElement(id) {
 window.addEventListener('DOMContentLoaded', () => {
   console.log('[Renderer] DOM ready, initializing...');
 
-  // --- DOM elements (all) ---
+  // --- DOM elements ---
   const closeButton = getElement('close-button');
   const minimizeButton = getElement('minimize-button');
   const maximizeButton = getElement('maximize-button');
@@ -49,7 +49,10 @@ window.addEventListener('DOMContentLoaded', () => {
   const launcherVersionSpan = getElement('launcher-version');
   const checkUpdatesNowButton = getElement('check-updates-now');
 
-  // Game settings elements
+  // Theme selector
+  const themeSelect = getElement('theme-select');
+
+  // Game settings elements (all)
   const resolutionSelect = getElement('resolution-select');
   const displayModeSelect = getElement('display-mode-select');
   const fpsLimitSelect = getElement('fps-limit-select');
@@ -88,6 +91,16 @@ window.addEventListener('DOMContentLoaded', () => {
   let lastDownloadUpdate = Date.now();
   let lastDownloadBytes = 0;
   let completedFiles = 0;
+
+  // Apply theme to body
+  function applyTheme(theme) {
+    const body = document.body;
+    // Remove all existing theme classes
+    body.classList.remove('theme-black-red', 'theme-purple', 'theme-blue', 'theme-yellow', 'theme-orange', 'theme-pink', 'theme-hotpink');
+    if (theme && theme !== 'default') {
+      body.classList.add(`theme-${theme}`);
+    }
+  }
 
   if (launcherVersionSpan) {
     launcherVersionSpan.textContent = packageJson.version || 'v0.1.17';
@@ -133,6 +146,7 @@ window.addEventListener('DOMContentLoaded', () => {
     } catch (_) {}
   }
 
+  // Window controls
   if (closeButton) closeButton.addEventListener('click', () => ipcRenderer.invoke('window:close'));
   if (minimizeButton) minimizeButton.addEventListener('click', () => ipcRenderer.invoke('window:minimize'));
   if (maximizeButton) maximizeButton.addEventListener('click', async () => {
@@ -143,6 +157,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'F11') { e.preventDefault(); await ipcRenderer.invoke('window:toggleFullscreen'); }
   });
 
+  // Settings modal
   function openSettingsModal() {
     if (modalOverlay && settingsModal) {
       modalOverlay.style.display = 'block';
@@ -210,6 +225,12 @@ window.addEventListener('DOMContentLoaded', () => {
         zoomValue.textContent = `${savedZoom}%`;
         await ipcRenderer.invoke('set-zoom', savedZoom);
       }
+      // Theme
+      if (themeSelect) {
+        const savedTheme = settings.theme || 'default';
+        themeSelect.value = savedTheme;
+        applyTheme(savedTheme);
+      }
     } catch (error) { console.error('Failed to load settings:', error); }
   }
 
@@ -240,12 +261,15 @@ window.addEventListener('DOMContentLoaded', () => {
         autoUpdate: autoUpdateCheckbox ? autoUpdateCheckbox.checked : false,
         minimizeToTray: minimizeToTrayCheckbox ? minimizeToTrayCheckbox.checked : false,
         timeout: timeoutInput ? parseInt(timeoutInput.value, 10) || 30 : 30,
-        zoom: zoomSlider ? parseInt(zoomSlider.value, 10) : 100
+        zoom: zoomSlider ? parseInt(zoomSlider.value, 10) : 100,
+        theme: themeSelect ? themeSelect.value : 'default'
       };
       await ipcRenderer.invoke('save-settings', settings);
       if (installDir) {
         await ipcRenderer.invoke('write-game-options', installDir, settings);
       }
+      // Apply theme immediately
+      if (themeSelect) applyTheme(settings.theme);
       updateStatus('Settings saved successfully');
       closeSettingsModal();
     } catch (error) {
@@ -254,6 +278,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   if (saveSettingsButton) saveSettingsButton.addEventListener('click', saveSettings);
 
+  // Sliders live update
   if (memorySlider && memoryValue) {
     memorySlider.addEventListener('input', (e) => { memoryValue.textContent = `${e.target.value} MB`; });
   }
@@ -268,6 +293,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Install directory selection
   async function showInstallLocationDialog() {
     try {
       const selectedDir = await ipcRenderer.invoke('select-directory');
@@ -302,6 +328,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Play button (unchanged)
   if (playButton) {
     playButton.addEventListener('click', async () => {
       if (!installDir) {
@@ -339,6 +366,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Patcher (full scan, repair, pause) – unchanged
   async function startScan(mode) {
     if (isScanning) return updateStatus('Scan already in progress');
     isScanning = true;
