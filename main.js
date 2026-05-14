@@ -1,4 +1,4 @@
-// main.js - SWG Returns Launcher (PreCU) – original working launch + login config writer
+// main.js - SWG Returns Launcher (NGE / SwgClient_r.exe)
 const { app, BrowserWindow, ipcMain, dialog, shell, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
@@ -22,11 +22,11 @@ app.commandLine.appendSwitch('force-device-scale-factor', '1');
 let mainWindow;
 let rpc;
 
-// Patch server (downloads)
-const BASE_URL = 'http://15.204.254.253/tre/';
+// NGE patch server (downloads)
+const BASE_URL = 'http://15.204.254.253/tre/nge/';
 const VERSION_URL = `${BASE_URL}version.txt`;
 
-// Game login server (client connects here)
+// Game login server (unchanged)
 const GAME_SERVER_IP = '144.217.255.58';
 const GAME_SERVER_PORT = 44453;
 
@@ -115,7 +115,7 @@ function detectInstallDir() {
     app.getPath('home') + '\\SWGEmu',
   ];
   for (const p of commonPaths) {
-    if (fs.existsSync(p) && fs.existsSync(path.join(p, 'SWGEmu.exe'))) return p;
+    if (fs.existsSync(p) && fs.existsSync(path.join(p, 'SwgClient_r.exe'))) return p;
   }
   return null;
 }
@@ -332,7 +332,7 @@ ipcMain.handle('write-game-options', async (event, installDir, settings) => {
   }
 });
 
-// FPS patching
+// FPS patching – may not work for NGE, but we keep it; errors will be logged.
 ipcMain.handle('patch-game-fps', async (event, exePath, fps) => {
   return new Promise(resolve => {
     if (!fs.existsSync(exePath)) {
@@ -348,11 +348,11 @@ ipcMain.handle('patch-game-fps', async (event, exePath, fps) => {
         floatBuf.writeFloatLE(fps);
         fs.writeSync(fd, floatBuf, 0, 4, 0x1156);
         fs.closeSync(fd);
-        log(`Patched SWGEmu.exe FPS to ${fps}`);
+        log(`Patched ${path.basename(exePath)} FPS to ${fps}`);
         resolve({ success: true });
       } else {
         fs.closeSync(fd);
-        resolve({ success: false, error: 'Signature mismatch' });
+        resolve({ success: false, error: 'Signature mismatch (NGE may require different offset)' });
       }
     } catch (err) {
       resolve({ success: false, error: err.message });
@@ -373,7 +373,7 @@ ipcMain.handle('test-exe', async (event, exePath) => {
   }
 });
 
-// ---------- ORIGINAL WORKING LAUNCH (spawn with no arguments) ----------
+// Launch game using spawn (original working method)
 ipcMain.handle('launch-game', async (event, { exePath, settings }) => {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(exePath)) {
@@ -412,7 +412,7 @@ ipcMain.handle('launch-game', async (event, { exePath, settings }) => {
   });
 });
 
-// ---------- PATCHER (multithread, resume, speed limit) ----------
+// ---------- PATCHER (multithread, resume, speed limit) – same as before ----------
 let activeDownloads = new Map();
 let downloadQueue = [];
 let isDownloading = false;
@@ -658,7 +658,7 @@ ipcMain.handle('select-directory', async () => {
 ipcMain.handle('select-file', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openFile'],
-    title: 'Select SWGEmu.exe',
+    title: 'Select SwgClient_r.exe',
     filters: [{ name: 'Executable Files', extensions: ['exe'] }]
   });
   if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
