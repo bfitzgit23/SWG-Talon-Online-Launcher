@@ -1,4 +1,4 @@
-// main.js - SWG Returns Launcher (NGE / SwgClient_r.exe)
+// main.js - SWG-Talon-Online Launcher (NGE / SWG-Source)
 const { app, BrowserWindow, ipcMain, dialog, shell, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
@@ -22,12 +22,12 @@ app.commandLine.appendSwitch('force-device-scale-factor', '1');
 let mainWindow;
 let rpc;
 
-// NGE patch server (downloads)
+// Patch server (downloads)
 const BASE_URL = 'http://15.204.254.253/tre/nge/';
 const VERSION_URL = `${BASE_URL}version.txt`;
 
-// Game login server (unchanged)
-const GAME_SERVER_IP = '144.217.255.58';
+// Game login server (client connects here)
+const GAME_SERVER_IP = '93.90.205.211';
 const GAME_SERVER_PORT = 44453;
 
 const logFile = path.join(app.getPath('userData'), 'logs', 'launcher.log');
@@ -180,7 +180,6 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 
-// IPC: Window controls
 ipcMain.handle('window:minimize', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize(); });
 ipcMain.handle('window:maximizeToggle', () => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -206,7 +205,6 @@ ipcMain.handle('set-zoom', async (event, percent) => {
   }
 });
 
-// Game version checker
 ipcMain.handle('check-game-version', async () => {
   try {
     const response = await axios.get(VERSION_URL, { timeout: 5000 });
@@ -224,7 +222,6 @@ ipcMain.handle('save-game-version', (event, version) => {
   fs.writeFileSync(path.join(app.getPath('userData'), 'game_version.txt'), version);
 });
 
-// ---------- OPTIONS.CFG WRITER (preserves structure, writes login config) ----------
 ipcMain.handle('write-game-options', async (event, installDir, settings) => {
   const optionsPath = path.join(installDir, 'options.cfg');
   try {
@@ -271,7 +268,6 @@ ipcMain.handle('write-game-options', async (event, installDir, settings) => {
       updates.push({ section: 'ClientGraphics', key: 'borderlessWindow', value: 1 });
     }
 
-    // Parse existing file into sections
     const sections = {};
     let currentSection = null;
     let currentLines = [];
@@ -287,7 +283,6 @@ ipcMain.handle('write-game-options', async (event, installDir, settings) => {
     }
     if (currentSection) sections[currentSection] = currentLines;
 
-    // Apply updates
     for (const update of updates) {
       const section = update.section;
       const key = update.key;
@@ -308,7 +303,6 @@ ipcMain.handle('write-game-options', async (event, installDir, settings) => {
       if (!keyFound) sectionLines.push(`\t${key}=${value}`);
     }
 
-    // Rebuild file in the order sections appeared
     const newLines = [];
     for (const [sectionName, lines] of Object.entries(sections)) {
       newLines.push(...lines);
@@ -319,7 +313,6 @@ ipcMain.handle('write-game-options', async (event, installDir, settings) => {
     fs.writeFileSync(optionsPath, newLines.join('\n'), 'utf8');
     log(`Updated options.cfg in ${installDir}`);
 
-    // ---------- Write swgemu_login.cfg (login server config) ----------
     const loginCfgPath = path.join(installDir, 'swgemu_login.cfg');
     const loginCfg = `[ClientGame]\r\nloginServerAddress0=${GAME_SERVER_IP}\r\nloginServerPort0=${GAME_SERVER_PORT}\r\nfreeChaseCameraMaximumZoom=${settings.maxCameraZoom || 10}\r\n0fd345d9 = true\r\n`;
     fs.writeFileSync(loginCfgPath, loginCfg, 'utf8');
@@ -332,7 +325,6 @@ ipcMain.handle('write-game-options', async (event, installDir, settings) => {
   }
 });
 
-// FPS patching – may not work for NGE, but we keep it; errors will be logged.
 ipcMain.handle('patch-game-fps', async (event, exePath, fps) => {
   return new Promise(resolve => {
     if (!fs.existsSync(exePath)) {
@@ -348,11 +340,11 @@ ipcMain.handle('patch-game-fps', async (event, exePath, fps) => {
         floatBuf.writeFloatLE(fps);
         fs.writeSync(fd, floatBuf, 0, 4, 0x1156);
         fs.closeSync(fd);
-        log(`Patched ${path.basename(exePath)} FPS to ${fps}`);
+        log(`Patched SwgClient_r.exe FPS to ${fps}`);
         resolve({ success: true });
       } else {
         fs.closeSync(fd);
-        resolve({ success: false, error: 'Signature mismatch (NGE may require different offset)' });
+        resolve({ success: false, error: 'Signature mismatch' });
       }
     } catch (err) {
       resolve({ success: false, error: err.message });
@@ -373,7 +365,6 @@ ipcMain.handle('test-exe', async (event, exePath) => {
   }
 });
 
-// Launch game using spawn (original working method)
 ipcMain.handle('launch-game', async (event, { exePath, settings }) => {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(exePath)) {
@@ -395,11 +386,9 @@ ipcMain.handle('launch-game', async (event, { exePath, settings }) => {
       log(`Spawn error: ${err.message}`, 'ERROR');
       reject(err);
     });
-
     gameProcess.on('exit', (code) => {
       log(`Game process exited with code ${code}`);
     });
-
     gameProcess.unref();
 
     if (gameProcess.pid) {
@@ -412,7 +401,6 @@ ipcMain.handle('launch-game', async (event, { exePath, settings }) => {
   });
 });
 
-// ---------- PATCHER (multithread, resume, speed limit) – same as before ----------
 let activeDownloads = new Map();
 let downloadQueue = [];
 let isDownloading = false;
@@ -544,7 +532,6 @@ ipcMain.handle('patcher-resume', () => {
   log('Patcher resumed');
 });
 
-// Server status (patch server – http ping)
 ipcMain.handle('server-status', async () => {
   const start = Date.now();
   try {
@@ -555,7 +542,6 @@ ipcMain.handle('server-status', async () => {
   }
 });
 
-// Log viewer
 ipcMain.handle('get-log-content', () => {
   if (fs.existsSync(logFile)) return fs.readFileSync(logFile, 'utf8');
   return '';
@@ -576,7 +562,6 @@ ipcMain.handle('open-log-viewer', () => {
 
 ipcMain.handle('detect-install-dir', () => detectInstallDir());
 
-// ---------- FILE MANAGEMENT HANDLERS ----------
 ipcMain.handle('load-required-files', async () => {
   return new Promise((resolve, reject) => {
     const url = BASE_URL + 'required-files.json';
@@ -665,7 +650,6 @@ ipcMain.handle('select-file', async () => {
   return null;
 });
 
-// ---------- SETTINGS MANAGEMENT ----------
 const getSettingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 ipcMain.handle('save-settings', (event, settings) => {
   try {
@@ -674,9 +658,7 @@ ipcMain.handle('save-settings', (event, settings) => {
     const merged = { ...existing, ...settings };
     fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2));
     return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+  } catch (error) { return { success: false, error: error.message }; }
 });
 ipcMain.handle('get-settings', () => {
   const settingsPath = getSettingsPath();
@@ -717,12 +699,11 @@ ipcMain.handle('open-logs', async () => {
   const logPath = path.join(app.getPath('userData'), 'logs');
   if (!fs.existsSync(logPath)) fs.mkdirSync(logPath, { recursive: true });
   const logFileFull = path.join(logPath, 'launcher.log');
-  if (!fs.existsSync(logFileFull)) fs.writeFileSync(logFileFull, `SWG Returns Launcher Log\nCreated: ${new Date().toISOString()}\n\n`);
+  if (!fs.existsSync(logFileFull)) fs.writeFileSync(logFileFull, `SWG-Talon-Online Launcher Log\nCreated: ${new Date().toISOString()}\n\n`);
   shell.openPath(logFileFull);
   return { success: true };
 });
 
-// ---------- ERROR HANDLERS ----------
 process.on('uncaughtException', error => {
   try { fs.appendFileSync(logFile, `${new Date().toISOString()} - Uncaught Exception: ${error.stack}\n`); } catch(_) {}
 });
